@@ -1,10 +1,15 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'node:22'
+            args '-u root'
+        }
+    }
 
     environment {
-        NODE_ENV  = 'test'
-        BUILD_DIR = 'dist'
-        APP_NAME  = 'kijanikiosk-payments'
+        NODE_ENV = 'test'
+        BUILD_DIR = '.next'
+        APP_NAME = 'kijanikiosk-payments'
     }
 
     options {
@@ -14,44 +19,79 @@ pipeline {
     }
 
     stages {
-        stage('Build') {
+        stage('Environment') {
             steps {
-                echo "Installing dependencies for ${APP_NAME}..."
-                sh 'npm ci'
-
-                echo "Building application..."
-                sh 'npm run build'
-
-                echo "Verifying build output..."
                 sh '''
-                    set -e
-                    test -d "${BUILD_DIR}" || { echo "ERROR: build directory not found"; exit 1; }
-                    echo "Build output: $(ls ${BUILD_DIR} | wc -l) files in ${BUILD_DIR}/"
+                    echo "Node version:"
+                    node -v
+
+                    echo "NPM version:"
+                    npm -v
                 '''
             }
         }
-        stage('Test') {
+
+        stage('Install Dependencies') {
             steps {
-                echo "Test stage: TODO"
+                echo "Installing dependencies..."
+                sh 'npm ci'
             }
         }
+
+        stage('Build') {
+            steps {
+                echo "Building ${APP_NAME}..."
+                sh 'npm run build'
+            }
+        }
+
+        stage('Verify Build') {
+            steps {
+                sh '''
+                    set -e
+
+                    if [ ! -d "${BUILD_DIR}" ]; then
+                        echo "ERROR: ${BUILD_DIR} directory not found."
+                        exit 1
+                    fi
+
+                    echo "Build completed successfully."
+                    ls -la ${BUILD_DIR}
+                '''
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh '''
+                    if npm run | grep -q " test"; then
+                        npm test
+                    else
+                        echo "No test script found. Skipping tests."
+                    fi
+                '''
+            }
+        }
+
         stage('Archive') {
             steps {
-                echo "Archive stage: TODO"
+                archiveArtifacts artifacts: '.next/**', fingerprint: true
             }
         }
     }
 
     post {
         success {
-            echo "Pipeline succeeded: ${APP_NAME} build ${BUILD_NUMBER}"
+            echo "✅ ${APP_NAME} build #${BUILD_NUMBER} completed successfully."
         }
+
         failure {
-            echo "Pipeline FAILED: ${APP_NAME} build ${BUILD_NUMBER} - check logs"
+            echo "❌ ${APP_NAME} build #${BUILD_NUMBER} failed."
         }
+
         always {
             echo "Build URL: ${BUILD_URL}"
+            cleanWs()
         }
     }
 }
-
