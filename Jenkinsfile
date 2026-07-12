@@ -6,9 +6,6 @@ pipeline {
         BUILD_DIR = 'dist'
         APP_NAME  = 'kijanikiosk-payments'
     }
-    tools {
-        nodejs 'Node22'
-    }
 
     options {
         timeout(time: 15, unit: 'MINUTES')
