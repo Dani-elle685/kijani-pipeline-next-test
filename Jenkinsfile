@@ -32,16 +32,28 @@ pipeline {
         }
         stage('Test') {
             steps {
-                echo "Running tests for ${APP_NAME}..."
+                echo "Running test suite for ${APP_NAME}..."
                 sh '''
-                set -e
-                npm test
+                    set -e
+                    npm test -- --reporter=junit --reporter-options output=test-results/junit.xml
                 '''
+            }
+            post {
+                always {
+                    // Publish JUnit results so Jenkins tracks test history
+                    // even if the tests failed
+                    junit allowEmptyResults: true,
+                        testResults: 'test-results/*.xml'
+                }
             }
         }
         stage('Archive') {
             steps {
-                echo "Archive stage: TODO"
+                echo "Archiving build artifact for ${APP_NAME} build ${BUILD_NUMBER}..."
+                archiveArtifacts artifacts: "${BUILD_DIR}/**",
+                                fingerprint: true,
+                                onlyIfSuccessful: true
+                echo "Artifact archived. Download from: ${BUILD_URL}artifact/"
             }
         }
     }
@@ -54,7 +66,7 @@ pipeline {
             echo "Pipeline FAILED: ${APP_NAME} build ${BUILD_NUMBER} - check logs"
         }
         always {
-            echo "Build URL: ${BUILD_URL}"
+            cleanWs()
         }
     }
 }
