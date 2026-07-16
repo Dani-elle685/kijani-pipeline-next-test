@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         NODE_ENV  = 'test'
-        BUILD_DIR = 'dist'
+        BUILD_DIR = '.next'
         APP_NAME  = 'kijanikiosk-payments'
     }
 
