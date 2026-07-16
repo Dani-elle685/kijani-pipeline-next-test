@@ -34,6 +34,7 @@ pipeline {
                     '''
             }
         }
+        
         stage('Test') {
             steps {
                 echo "Running test suite for ${APP_NAME}..."
