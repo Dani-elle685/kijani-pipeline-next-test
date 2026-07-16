@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        nodejs 'NodeJS 22' // Must match the exact name you used in the Jenkins UI
+    }
+
     environment {
         NODE_ENV  = 'test'
         BUILD_DIR = '.next'
