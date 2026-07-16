@@ -1,0 +1,118 @@
+pipeline {
+    agent any
+
+    environment {
+        NODE_ENV  = 'test'
+        BUILD_DIR = 'dist'
+        APP_NAME  = 'kijanikiosk-payments'
+        
+        // Define the base Nexus registry URL
+        NEXUS_URL = 'http://localhost:8081/repository/npm-kijanikiosk/'
+
+        // Extract package version dynamically from package.json
+        PKG_VERSION = sh(script: "node -p \"require('./package.json').version\"", returnStdout: true).trim()
+        
+        // Extract 7-character Git short SHA
+        GIT_SHORT = sh(script: "git rev-parse --short HEAD", returnStdout: true).trim()
+        
+        // Combine into a unique, trackable artifact version (e.g., 1.0.0-b42-a1b2c3d)
+        ARTIFACT_VERSION = "${PKG_VERSION}-b${BUILD_NUMBER}-${GIT_SHORT}"
+    }
+
+    options {
+        timeout(time: 15, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        disableConcurrentBuilds()
+    }
+
+    stages {
+        stage('Build') {
+            steps {
+                echo "Installing dependencies for ${APP_NAME}..."
+                sh 'npm ci'
+
+                echo "Building application..."
+                sh 'npm run build'
+
+                echo "Verifying build output..."
+                sh '''
+                    set -e
+                    test -d "${BUILD_DIR}" || { echo "ERROR: build directory not found"; exit 1; }
+                    echo "Build output: $(ls ${BUILD_DIR} | wc -l) files in ${BUILD_DIR}/"
+                '''
+            }
+        }
+        
+        
+        stage('Test') {
+            steps {
+                echo "Running test suite for ${APP_NAME}..."
+                sh '''
+                    set -e
+                    npm test -- --reporter=junit --reporter-options output=test-results/junit.xml
+                '''
+            }
+            post {
+                always {
+                    // Publish JUnit results so Jenkins tracks test history even if tests fail
+                    junit allowEmptyResults: true, testResults: 'test-results/*.xml'
+                }
+            }
+        }
+        
+        stage('Archive') {
+            steps {
+                echo "Archiving build artifact for ${APP_NAME} build ${BUILD_NUMBER}..."
+                archiveArtifacts artifacts: "${BUILD_DIR}/**",
+                                 fingerprint: true,
+                                 onlyIfSuccessful: true
+                echo "Artifact archived. Download from: ${BUILD_URL}artifact/"
+            }
+        }
+        
+        stage('Publish') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'nexus-credentials',
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASS'
+                )]) {
+                    sh '''
+                        set -e
+
+                        # 1. Register the cleanup trap IMMEDIATELY to prevent credential leaks on early failure
+                        trap "rm -f .npmrc" EXIT
+
+                        # 2. Generate base64 token from the injected credentials
+                        NEXUS_TOKEN=$(echo -n "${NEXUS_USER}:${NEXUS_PASS}" | base64)
+
+                        # 3. Create .npmrc with the token (keep contents flush left to prevent token syntax errors)
+                        cat > .npmrc << NPMRC
+registry=http://localhost:8081/repository/npm-kijanikiosk/
+//localhost:8081/repository/npm-kijanikiosk/:_authToken=${NEXUS_TOKEN}
+NPMRC
+
+                        # 4. Update package.json version to our dynamically computed ARTIFACT_VERSION
+                        npm version "${ARTIFACT_VERSION}" --no-git-tag-version
+
+                        # 5. Publish the package
+                        npm publish
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Published ${APP_NAME} version ${ARTIFACT_VERSION} to Nexus"
+            echo "Artifact URL: ${NEXUS_URL}/${APP_NAME}/-/${APP_NAME}-${ARTIFACT_VERSION}.tgz"
+        }
+        failure {
+            echo "Pipeline FAILED at build ${BUILD_NUMBER} - check logs at ${BUILD_URL}"
+        }
+        always {
+            cleanWs()
+        }
+    }
+}
