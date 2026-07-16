@@ -40,7 +40,7 @@ pipeline {
                 echo "Running test suite for ${APP_NAME}..."
                 sh '''
                     set -e
-                    npm test -- --reporter=junit --reporter-options output=test-results/junit.xml
+                    npm test
                 '''
             }
             post {
