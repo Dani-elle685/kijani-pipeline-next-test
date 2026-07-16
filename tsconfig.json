@@ -32,34 +32,3 @@
   ],
   "exclude": ["node_modules"]
 }
-
-
-
-curl -u admin:8f35f5a2-d4cb-4e9b-acf3-26ed1f1a1ee5 \
-  http://localhost:8081/service/rest/v1/repositories \
-  | python3 -m json.tool | grep '"name"'
-
- # Confirm the repository was created
-curl -u admin:8f35f5a2-d4cb-4e9b-acf3-26ed1f1a1ee5 \
-  http://localhost:8081/service/rest/v1/repositories \
-  | python3 -m json.tool | grep "npm-kijanikiosk"
-
-
- cat > .npmrc << 'EOF'
-registry=http://localhost:8081/repository/npm-kijanikiosk/
-//localhost:8081/repository/npm-kijanikiosk/:_authToken=${NPM_TOKEN}
-EOF
-
-echo -n "admin:8f35f5a2-d4cb-4e9b-acf3-26ed1f1a1ee5" | base64
-
-export NPM_TOKEN="YWRtaW46OGYzNWY1YTItZDRjYi00ZTliLWFjZjMtMjZlZDFmMWExZWU1"
-
-npm publish --registry http://localhost:8081/repository/npm-kijanikiosk/
-
-# 4. Confirm the package appears in Nexus
-curl -u admin:8f35f5a2-d4cb-4e9b-acf3-26ed1f1a1ee5 \
-  "http://localhost:8081/service/rest/v1/search?repository=npm-kijanikiosk" \
-  | python3 -m json.tool | grep '"name"'
-
-
-
