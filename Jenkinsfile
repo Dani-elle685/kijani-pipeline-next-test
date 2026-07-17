@@ -14,7 +14,7 @@ pipeline {
 
     environment {
         NODE_ENV  = 'test'
-        BUILD_DIR = 'dist'  
+        BUILD_DIR = '.next'  
         APP_NAME  = 'kijanikiosk-payments'
         NEXUS_URL = 'http://localhost:8081/repository/npm-kijanikiosk-test/'
     }
