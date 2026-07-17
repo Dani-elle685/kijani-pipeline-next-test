@@ -2,20 +2,13 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'NodeJS 22'
+        nodejs 'NodeJS 22' // Must match the exact name you used in the Jenkins UI
     }
 
     environment {
         NODE_ENV  = 'test'
         BUILD_DIR = '.next'
         APP_NAME  = 'kijanikiosk-payments'
-    
-        PKG_VERSION = sh(script: "node -p \"require('./package.json').version\"",
-                        returnStdout: true).trim()
-        GIT_SHORT   = sh(script: 'git rev-parse --short HEAD',
-                        returnStdout: true).trim()
-        ARTIFACT_VERSION = "${PKG_VERSION}-${GIT_SHORT}"
-        // Result: "1.0.0-a3f2c8b"
     }
 
     options {
@@ -66,44 +59,6 @@ pipeline {
                                 fingerprint: true,
                                 onlyIfSuccessful: true
                 echo "Artifact archived. Download from: ${BUILD_URL}artifact/"
-            }
-        }
-        // stage('Publish') {
-        //     steps {
-        //         withCredentials([usernamePassword(
-        //             credentialsId: 'nexus-credentials',   // The ID from the credentials store
-        //             usernameVariable: 'NEXUS_USER',       // Variable name for the username
-        //             passwordVariable: 'NEXUS_PASS'        // Variable name for the password
-        //         )]) {
-        //             sh '''
-        //                 set -e
-
-        //                 # Generate base64 token from the injected credentials
-        //                 NEXUS_TOKEN=$(echo -n "${NEXUS_USER}:${NEXUS_PASS}" | base64)
-
-        //                 # Create .npmrc with the token (this file never gets committed)
-        //                 cat > .npmrc << NPMRC
-        //                 registry=http://localhost:8081/repository/npm-kijanikiosk-test
-        //                 NPMRC
-
-        //                 # Publish the package
-        //                 npm publish
-
-        //                 # Clean up the .npmrc with credentials
-        //                 rm -f .npmrc
-        //             '''
-        //         }
-        //     }
-        // }
-        stage('Credential Test') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'nexus-credentials',
-                    usernameVariable: 'NEXUS_USER',
-                    passwordVariable: 'NEXUS_PASS'
-                )]) {
-                    sh 'echo "User: ${NEXUS_USER} Pass: ${NEXUS_PASS}"'
-                }
             }
         }
     }
