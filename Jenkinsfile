@@ -1,15 +1,16 @@
 pipeline {
-    agent any
-
-    tools {
-        nodejs 'NodeJS 22'
+    agent {
+        docker {
+            image 'node:18-alpine'
+            args  '-v /tmp:/tmp'
+        }
     }
 
     environment {
-        // Keep static variables here
         NODE_ENV  = 'test'
-        BUILD_DIR = '.next'
+        BUILD_DIR = 'dist'  
         APP_NAME  = 'kijanikiosk-payments'
+        NEXUS_URL = 'http://localhost:8081/repository/npm-kijanikiosk-test/'
     }
 
     options {
@@ -21,8 +22,8 @@ pipeline {
     stages {
         stage('Initialize') {
             steps {
-                // Evaluate dynamic shell variables here, after tools are ready
                 script {
+                    // Extract version from package.json and commit hash from Git
                     env.PKG_VERSION = sh(script: "node -p \"require('./package.json').version\"", returnStdout: true).trim()
                     env.GIT_SHORT   = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     env.ARTIFACT_VERSION = "${env.PKG_VERSION}-${env.GIT_SHORT}"
@@ -32,9 +33,17 @@ pipeline {
             }
         }
 
+        stage('Lint') {
+            steps {
+                echo "Running linter for ${APP_NAME}..."
+                // Enforcing fail-fast principle before starting resource-heavy compilation
+                sh 'npm run lint --if-present'
+            }
+        }
+
         stage('Build') {
             steps {
-                echo "Installing dependencies for ${APP_NAME}..."
+                echo "Installing clean dependencies for ${APP_NAME}..."
                 sh 'npm ci'
 
                 echo "Building application..."
@@ -43,63 +52,87 @@ pipeline {
                 echo "Verifying build output..."
                 sh '''
                     set -e
-                    test -d "${BUILD_DIR}" || { echo "ERROR: build directory not found"; exit 1; }
-                    echo "Build output: $(ls ${BUILD_DIR} | wc -l) files in ${BUILD_DIR}/"
-                    '''
+                    test -d "${BUILD_DIR}" || { echo "ERROR: build directory '${BUILD_DIR}' not found"; exit 1; }
+                    echo "Build output verified: $(ls ${BUILD_DIR} | wc -l) files found."
+                '''
+                
+                echo "Stashing compilation output for concurrent tracking stages..."
+                stash name: 'compiled-assets', includes: "${BUILD_DIR}/**"
             }
         }
-        
-        stage('Test') {
-            steps {
-                echo "Running test suite for ${APP_NAME}..."
-                sh '''
-                    set -e
-                    npm test
-                '''
-            }
-            post {
-                always {
-                    junit allowEmptyResults: true,
-                        testResults: 'test-results/*.xml'
+
+        stage('Verify') {
+            parallel {
+                stage('Test') {
+                    steps {
+                        echo "Unstashing build output..."
+                        unstash 'compiled-assets'
+                        
+                        echo "Running unit test suite..."
+                        sh '''
+                            set -e
+                            npm test
+                        '''
+                    }
+                    post {
+                        always {
+                            // Publish JUnit results for test metrics reporting
+                            junit allowEmptyResults: true,
+                                  testResults: 'test-results/*.xml'
+                        }
+                    }
+                }
+                stage('Security Audit') {
+                    steps {
+                        echo "Scanning package dependencies for high vulnerabilities..."
+                        // Scans package-lock.json without needing to unstash the build distribution folder
+                        sh 'npm audit --audit-level=high'
+                    }
                 }
             }
         }
 
         stage('Archive') {
             steps {
-                echo "Archiving build artifact for ${APP_NAME} build ${BUILD_NUMBER}..."
+                echo "Archiving workspace artifacts securely for build ${BUILD_NUMBER}..."
                 archiveArtifacts artifacts: "${BUILD_DIR}/**",
-                                fingerprint: true,
-                                onlyIfSuccessful: true
-                echo "Artifact archived. Download from: ${BUILD_URL}artifact/"
+                                 fingerprint: true,
+                                 onlyIfSuccessful: true
+                echo "Artifacts preserved. Access from: ${BUILD_URL}artifact/"
             }
         }
 
         stage('Publish') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'nexus-credentials',   
-                    usernameVariable: 'NEXUS_USER',       
-                    passwordVariable: 'NEXUS_PASS'        
+                    credentialsId: 'nexus-credentials',
+                    usernameVariable: 'NEXUS_USER',
+                    passwordVariable: 'NEXUS_PASS'
                 )]) {
                     sh '''
                         set -e
+                        
+                        # Guarantee cleanup of .npmrc containing raw tokens even if steps fail
+                        trap "rm -f .npmrc" EXIT
 
-                        # Generate base64 token from the injected credentials
+                        # Generate base64 token from injected credentials
                         NEXUS_TOKEN=$(echo -n "${NEXUS_USER}:${NEXUS_PASS}" | base64)
 
-                        # Create .npmrc with the token appended correctly
+                        # Strip protocol from NEXUS_URL to cleanly format the .npmrc auth key matching
+                        NEXUS_REGISTRY_PATH=$(echo "${NEXUS_URL}" | sed 's/^https\\?://')
+
+                        # Write secure temporary configurations
                         cat > .npmrc << NPMRC
-                        registry=http://localhost:8081/repository/npm-kijanikiosk-test/
-                        //localhost:8081/repository/npm-kijanikiosk-test/:_auth="${NEXUS_TOKEN}"
-                        //localhost:8081/repository/npm-kijanikiosk-test/:always-auth=true
+                        registry=${NEXUS_URL}
+                        ${NEXUS_REGISTRY_PATH}:_auth="${NEXUS_TOKEN}"
+                        ${NEXUS_REGISTRY_PATH}:always-auth=true
                         NPMRC
 
-                        # Publish the package
-                        npm publish
+                        # Synchronize package.json with the generated unique pipeline artifact version
+                        npm version ${ARTIFACT_VERSION} --no-git-tag-version
 
-                        # Clean up the .npmrc with credentials
-                        rm -f .npmrc
+                        # Publish to target local Sonatype Nexus engine
+                        npm publish
                     '''
                 }
             }
@@ -108,14 +141,16 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline succeeded: ${APP_NAME} build ${BUILD_NUMBER}"
+            echo "Pipeline succeeded! Release Version ${env.ARTIFACT_VERSION} successfully uploaded to ${NEXUS_URL}"
         }
         failure {
-            // This will work now because APP_NAME is safely initialized 
-            echo "Pipeline FAILED: ${APP_NAME} build ${BUILD_NUMBER} - check logs"
+            echo "Pipeline FAILED: ${APP_NAME} build #${BUILD_NUMBER}. Inspect full execution paths at: ${BUILD_URL}console"
+        }
+        changed {
+            echo "Build execution matrix state changed to: ${currentBuild.currentResult} - ${JOB_NAME} #${BUILD_NUMBER}"
         }
         always {
-            // This will work now because the pipeline safely enters a node workspace context
+            echo "Tearing down transient container workspace context..."
             cleanWs()
         }
     }
