@@ -54,8 +54,6 @@ pipeline {
 
         stage('Build') {
             steps {
-                echo "Installing clean dependencies for ${APP_NAME}..."
-                sh 'npm ci'
 
                 echo "Building application..."
                 sh 'npm run build'
