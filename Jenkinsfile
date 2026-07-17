@@ -1,9 +1,15 @@
 pipeline {
-    agent {
-        docker {
-            image 'node:18-alpine'
-            args  '-v /tmp:/tmp'
-        }
+    // agent {
+    //     docker {
+    //         image 'node:18-alpine'
+    //         args  '-v /tmp:/tmp'
+    //     }
+    // }
+
+    agent any
+
+    tools {
+        nodejs 'NodeJS 22'
     }
 
     environment {
