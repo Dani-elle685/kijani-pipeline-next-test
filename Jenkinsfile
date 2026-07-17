@@ -1,11 +1,18 @@
 pipeline {
-    agent {
-        docker {
-            // Requirement 1: Pinned, non-latest production-grade base image
-            image 'node:22-slim'
-            // Challenge A: Bypasses container network isolation to access host-bound Nexus on localhost
-            args  '--network=host -v /tmp:/tmp'
-        }
+    // agent {
+    //     docker {
+    //         // Requirement 1: Pinned, non-latest production-grade base image
+    //         image 'node:22-slim'
+    //         // Challenge A: Bypasses container network isolation to access host-bound Nexus on localhost
+    //         args  '--network=host -v /tmp:/tmp'
+    //     }
+    // }
+
+    agent any
+
+    tools {
+        // Requirement 1: Explicitly declared build tool versions
+        nodejs 'NodeJS 22'
     }
 
     environment {
