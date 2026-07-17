@@ -1,0 +1,435 @@
+Started by user admin
+
+Obtained Jenkinsfile from git https://github.com/Dani-elle685/kijani-pipeline-next-test.git
+[Pipeline] Start of Pipeline
+[Pipeline] node
+Running on Jenkins
+ in /var/jenkins_home/workspace/kijani--pipeline-next-test
+[Pipeline] {
+[Pipeline] stage
+[Pipeline] { (Declarative: Checkout SCM)
+[Pipeline] checkout
+Selected Git installation does not exist. Using Default
+The recommended git tool is: NONE
+No credentials specified
+ > git rev-parse --resolve-git-dir /var/jenkins_home/workspace/kijani--pipeline-next-test/.git # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url https://github.com/Dani-elle685/kijani-pipeline-next-test.git # timeout=10
+Fetching upstream changes from https://github.com/Dani-elle685/kijani-pipeline-next-test.git
+ > git --version # timeout=10
+ > git --version # 'git version 2.47.3'
+ > git fetch --tags --force --progress -- https://github.com/Dani-elle685/kijani-pipeline-next-test.git +refs/heads/*:refs/remotes/origin/* # timeout=10
+ > git rev-parse refs/remotes/origin/friday^{commit} # timeout=10
+Checking out Revision 88099029afe08b4508393fa03fe89732f69a0e48 (refs/remotes/origin/friday)
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f 88099029afe08b4508393fa03fe89732f69a0e48 # timeout=10
+Commit message: "updates jenkinsfile"
+ > git rev-list --no-walk b66d5f51970475ea934123363a902f29cc623f79 # timeout=10
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] withEnv
+[Pipeline] {
+[Pipeline] withEnv
+[Pipeline] {
+[Pipeline] timeout
+Timeout set to expire in 15 min
+[Pipeline] {
+[Pipeline] stage
+[Pipeline] { (Declarative: Tool Install)
+
+[Pipeline] tool
+
+[Pipeline] envVarsForTool
+[Pipeline] }
+
+[Pipeline] // stage
+
+[Pipeline] withEnv
+[Pipeline] {
+
+[Pipeline] stage
+[Pipeline] { (Initialize)
+
+[Pipeline] tool
+
+[Pipeline] envVarsForTool
+
+[Pipeline] withEnv
+
+[Pipeline] {
+[Pipeline] script
+
+[Pipeline] {
+[Pipeline] sh
+
++ node -p require('./package.json').version
+
+[Pipeline] sh
++ git rev-parse --short HEAD
+
+[Pipeline] echo
+Initialized pipeline for kijanikiosk-payments v0.1.0-8809902
+[Pipeline] }
+
+[Pipeline] // script
+[Pipeline] }
+
+[Pipeline] // withEnv
+
+[Pipeline] }
+
+[Pipeline] // stage
+
+[Pipeline] stage
+[Pipeline] { (Install)
+
+[Pipeline] tool
+[Pipeline] envVarsForTool
+
+[Pipeline] withEnv
+[Pipeline] {
+
+[Pipeline] echo
+Installing dependencies for kijanikiosk-payments...
+[Pipeline] sh
+
++ npm ci
+
+npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+npm warn deprecated whatwg-encoding@3.1.1: Use @exodus/bytes instead for a more spec-conformant and faster implementation
+npm warn deprecated glob@7.2.3: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+npm warn deprecated glob@10.5.0: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
+
+
+added 688 packages, and audited 689 packages in 2m
+
+189 packages are looking for funding
+  run `npm fund` for details
+
+2 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+
+[Pipeline] }
+
+[Pipeline] // withEnv
+
+[Pipeline] }
+
+[Pipeline] // stage
+
+[Pipeline] stage
+
+[Pipeline] { (Lint)
+
+[Pipeline] tool
+
+[Pipeline] envVarsForTool
+
+[Pipeline] withEnv
+
+[Pipeline] {
+
+[Pipeline] echo
+
+Running linter for kijanikiosk-payments...
+[Pipeline] sh
+
++ npm run lint --if-present
+
+
+> my-app@0.1.0 lint
+> eslint
+
+
+[Pipeline] }
+[Pipeline] // withEnv
+
+[Pipeline] }
+[Pipeline] // stage
+
+[Pipeline] stage
+[Pipeline] { (Build)
+
+[Pipeline] tool
+
+[Pipeline] envVarsForTool
+
+[Pipeline] withEnv
+[Pipeline] {
+
+[Pipeline] echo
+Building application assets...
+
+[Pipeline] sh
++ npm run build
+
+> my-app@0.1.0 build
+> next build
+
+
+⚠ No build cache found. Please configure build caching for faster rebuilds. Read more: https://nextjs.org/docs/messages/no-cache
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
+▲ Next.js 16.2.10 (Turbopack)
+
+  Creating an optimized production build ...
+
+✓ Compiled successfully in 10.6s
+  Running TypeScript ...
+
+  Finished TypeScript in 6.0s ...
+  Collecting page data using 5 workers ...
+
+  Generating static pages using 5 workers (0/4) ...
+  Generating static pages using 5 workers (1/4) 
+  Generating static pages using 5 workers (2/4) 
+  Generating static pages using 5 workers (3/4) 
+✓ Generating static pages using 5 workers (4/4) in 572ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+└ ○ /_not-found
+
+
+○  (Static)  prerendered as static content
+
+
+[Pipeline] echo
+Verifying build output compilation directory...
+
+[Pipeline] sh
++ set -e
++ test -d .next
++ ls .next
++ wc -l
++ echo Build output verified: 22 files found.
+Build output verified: 22 files found.
+
+[Pipeline] echo
+Stashing assets for down-stream validation tracks...
+
+[Pipeline] stash
+
+Stashed 191 file(s)
+
+[Pipeline] }
+
+[Pipeline] // withEnv
+
+[Pipeline] }
+[Pipeline] // stage
+
+[Pipeline] stage
+
+[Pipeline] { (Verify)
+
+[Pipeline] parallel
+[Pipeline] { (Branch: Test)
+
+[Pipeline] { (Branch: Security Audit)
+
+[Pipeline] stage
+[Pipeline] { (Test)
+
+[Pipeline] stage
+[Pipeline] { (Security Audit)
+
+[Pipeline] tool
+[Pipeline] tool
+
+[Pipeline] envVarsForTool
+
+[Pipeline] envVarsForTool
+
+[Pipeline] withEnv
+[Pipeline] {
+[Pipeline] withEnv
+
+[Pipeline] {
+[Pipeline] echo
+
+Unstashing assets for test run...
+[Pipeline] unstash
+
+[Pipeline] echo
+Running vulnerability scan on open-source dependencies...
+
+[Pipeline] sh
++ npm audit --audit-level=high
+
+[Pipeline] echo
+
+Running unit test suite...
+[Pipeline] sh
+
++ set -e
++ npm test
+
+> my-app@0.1.0 test
+> jest --ci --reporters=default --reporters=jest-junit
+
+
+# npm audit report
+
+postcss  <8.5.10
+Severity: moderate
+PostCSS has XSS via Unescaped </style> in its CSS Stringify Output - https://github.com/advisories/GHSA-qx2v-qp2m-jg93
+fix available via `npm audit fix --force`
+Will install next@9.3.3, which is a breaking change
+node_modules/next/node_modules/postcss
+  next  9.3.4-canary.0 - 16.3.0-canary.5
+  Depends on vulnerable versions of postcss
+  node_modules/next
+
+2 moderate severity vulnerabilities
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+[Pipeline] }
+
+[Pipeline] // withEnv
+
+[Pipeline] }
+
+[Pipeline] // stage
+[Pipeline] }
+
+PASS app/components/Button.test.tsx
+PASS app/page.test.tsx (5.235 s)
+
+Test Suites: 2 passed, 2 total
+Tests:       2 passed, 2 total
+Snapshots:   0 total
+Time:        11.808 s
+Ran all test suites.
+Post stage
+
+[Pipeline] junit
+Recording test results
+
+[Checks API] No suitable checks publisher found.
+
+[Pipeline] }
+
+[Pipeline] // withEnv
+[Pipeline] }
+
+[Pipeline] // stage
+
+[Pipeline] }
+
+[Pipeline] // parallel
+[Pipeline] }
+
+[Pipeline] // stage
+[Pipeline] stage
+
+[Pipeline] { (Archive)
+
+[Pipeline] tool
+[Pipeline] envVarsForTool
+
+[Pipeline] withEnv
+
+[Pipeline] {
+[Pipeline] echo
+Archiving compilation output artifacts with finger-printing...
+
+[Pipeline] archiveArtifacts
+Archiving artifacts
+
+Recording fingerprints
+
+[Pipeline] echo
+Archived locally at: http://localhost:8080/job/kijani--pipeline-next-test/18/artifact/
+[Pipeline] }
+
+[Pipeline] // withEnv
+[Pipeline] }
+
+[Pipeline] // stage
+
+[Pipeline] stage
+
+[Pipeline] { (Publish)
+[Pipeline] tool
+
+[Pipeline] envVarsForTool
+
+[Pipeline] withEnv
+[Pipeline] {
+
+[Pipeline] withCredentials
+
+Masking supported pattern matches of $NEXUS_PASS
+[Pipeline] {
+
+[Pipeline] sh
+
++ set -e
++ trap rm -f .npmrc EXIT
++ echo -n admin:****
++ base64
++ NEXUS_TOKEN=YWRtaW46****
++ echo http://localhost:8081/repository/npm-kijanikiosk-test/
++ sed s/^http[s]*://
++ NEXUS_REGISTRY_PATH=//localhost:8081/repository/npm-kijanikiosk-test/
++ cat
++ rm -f .npmrc
+[Pipeline] }
+
+[Pipeline] // withCredentials
+
+[Pipeline] }
+[Pipeline] // withEnv
+
+[Pipeline] }
+
+[Pipeline] // stage
+
+[Pipeline] stage
+[Pipeline] { (Declarative: Post Actions)
+
+[Pipeline] echo
+Purging workspace context trees from host workspace system...
+
+[Pipeline] cleanWs
+[WS-CLEANUP] Deleting project workspace...
+[WS-CLEANUP] Deferred wipeout is used...
+
+[WS-CLEANUP] done
+
+[Pipeline] echo
+Build state transition discovered. Status changed to: SUCCESS for job kijani--pipeline-next-test #18
+
+[Pipeline] echo
+Pipeline succeeded! Release version 0.1.0-8809902 is safely hosted at: http://localhost:8081/repository/npm-kijanikiosk-test/
+
+[Pipeline] }
+
+[Pipeline] // stage
+[Pipeline] }
+
+[Pipeline] // withEnv
+[Pipeline] }
+[Pipeline] // timeout
+
+[Pipeline] }
+[Pipeline] // withEnv
+[Pipeline] }
+[Pipeline] // withEnv
+
+[Pipeline] }
+[Pipeline] // node
+
+[Pipeline] End of Pipeline
+
+Finished: SUCCESS

@@ -1,6 +1,6 @@
 {
-  "name": "my-app",
-  "version": "0.1.0",
+  "name": "kijanikiosk-payments",
+  "version": "0.1.0-8809902",
   "private": false,
   "scripts": {
     "dev": "next dev",
