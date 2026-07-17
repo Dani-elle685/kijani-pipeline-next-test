@@ -6,16 +6,10 @@ pipeline {
     }
 
     environment {
+        // Keep static variables here
         NODE_ENV  = 'test'
         BUILD_DIR = '.next'
         APP_NAME  = 'kijanikiosk-payments'
-    
-        PKG_VERSION = sh(script: "node -p \"require('./package.json').version\"",
-                        returnStdout: true).trim()
-        GIT_SHORT   = sh(script: 'git rev-parse --short HEAD',
-                        returnStdout: true).trim()
-        ARTIFACT_VERSION = "${PKG_VERSION}-${GIT_SHORT}"
-        // Result: "1.0.0-a3f2c8b"
     }
 
     options {
@@ -25,6 +19,19 @@ pipeline {
     }
 
     stages {
+        stage('Initialize') {
+            steps {
+                // Evaluate dynamic shell variables here, after tools are ready
+                script {
+                    env.PKG_VERSION = sh(script: "node -p \"require('./package.json').version\"", returnStdout: true).trim()
+                    env.GIT_SHORT   = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    env.ARTIFACT_VERSION = "${env.PKG_VERSION}-${env.GIT_SHORT}"
+                    
+                    echo "Initialized pipeline for ${APP_NAME} v${env.ARTIFACT_VERSION}"
+                }
+            }
+        }
+
         stage('Build') {
             steps {
                 echo "Installing dependencies for ${APP_NAME}..."
@@ -52,13 +59,12 @@ pipeline {
             }
             post {
                 always {
-                    // Publish JUnit results so Jenkins tracks test history
-                    // even if the tests failed
                     junit allowEmptyResults: true,
                         testResults: 'test-results/*.xml'
                 }
             }
         }
+
         stage('Archive') {
             steps {
                 echo "Archiving build artifact for ${APP_NAME} build ${BUILD_NUMBER}..."
@@ -68,41 +74,33 @@ pipeline {
                 echo "Artifact archived. Download from: ${BUILD_URL}artifact/"
             }
         }
-        // stage('Publish') {
-        //     steps {
-        //         withCredentials([usernamePassword(
-        //             credentialsId: 'nexus-credentials',   // The ID from the credentials store
-        //             usernameVariable: 'NEXUS_USER',       // Variable name for the username
-        //             passwordVariable: 'NEXUS_PASS'        // Variable name for the password
-        //         )]) {
-        //             sh '''
-        //                 set -e
 
-        //                 # Generate base64 token from the injected credentials
-        //                 NEXUS_TOKEN=$(echo -n "${NEXUS_USER}:${NEXUS_PASS}" | base64)
-
-        //                 # Create .npmrc with the token (this file never gets committed)
-        //                 cat > .npmrc << NPMRC
-        //                 registry=http://localhost:8081/repository/npm-kijanikiosk-test
-        //                 NPMRC
-
-        //                 # Publish the package
-        //                 npm publish
-
-        //                 # Clean up the .npmrc with credentials
-        //                 rm -f .npmrc
-        //             '''
-        //         }
-        //     }
-        // }
-        stage('Credential Test') {
+        stage('Publish') {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'nexus-credentials',
-                    usernameVariable: 'NEXUS_USER',
-                    passwordVariable: 'NEXUS_PASS'
+                    credentialsId: 'nexus-credentials',   
+                    usernameVariable: 'NEXUS_USER',       
+                    passwordVariable: 'NEXUS_PASS'        
                 )]) {
-                    sh 'echo "User: ${NEXUS_USER} Pass: ${NEXUS_PASS}"'
+                    sh '''
+                        set -e
+
+                        # Generate base64 token from the injected credentials
+                        NEXUS_TOKEN=$(echo -n "${NEXUS_USER}:${NEXUS_PASS}" | base64)
+
+                        # Create .npmrc with the token appended correctly
+                        cat > .npmrc << NPMRC
+                        registry=http://localhost:8081/repository/npm-kijanikiosk-test/
+                        //localhost:8081/repository/npm-kijanikiosk-test/:_auth="${NEXUS_TOKEN}"
+                        //localhost:8081/repository/npm-kijanikiosk-test/:always-auth=true
+                        NPMRC
+
+                        # Publish the package
+                        npm publish
+
+                        # Clean up the .npmrc with credentials
+                        rm -f .npmrc
+                    '''
                 }
             }
         }
@@ -113,11 +111,12 @@ pipeline {
             echo "Pipeline succeeded: ${APP_NAME} build ${BUILD_NUMBER}"
         }
         failure {
+            // This will work now because APP_NAME is safely initialized 
             echo "Pipeline FAILED: ${APP_NAME} build ${BUILD_NUMBER} - check logs"
         }
         always {
+            // This will work now because the pipeline safely enters a node workspace context
             cleanWs()
         }
     }
 }
-
