@@ -29,7 +29,6 @@ pipeline {
         stage('Initialize') {
             steps {
                 script {
-                    // Extract version from package.json and commit hash from Git
                     env.PKG_VERSION = sh(script: "node -p \"require('./package.json').version\"", returnStdout: true).trim()
                     env.GIT_SHORT   = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     env.ARTIFACT_VERSION = "${env.PKG_VERSION}-${env.GIT_SHORT}"
@@ -39,10 +38,16 @@ pipeline {
             }
         }
 
+        stage('Install') {
+            steps {
+                echo "Installing clean dependencies for ${APP_NAME}..."
+                sh 'npm ci'
+            }
+        }
+
         stage('Lint') {
             steps {
                 echo "Running linter for ${APP_NAME}..."
-                // Enforcing fail-fast principle before starting resource-heavy compilation
                 sh 'npm run lint --if-present'
             }
         }
