@@ -24,7 +24,6 @@ pipeline {
         stage('Initialize') {
             steps {
                 script {
-                    // Requirement 2: Dynamically calculate semantic version tracking variables
                     env.PKG_VERSION = sh(script: "node -p \"require('./package.json').version\"", returnStdout: true).trim()
                     env.GIT_SHORT   = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     env.ARTIFACT_VERSION = "${env.PKG_VERSION}-${env.GIT_SHORT}"
@@ -44,7 +43,6 @@ pipeline {
         stage('Lint') {
             steps {
                 echo "Running linter for ${APP_NAME}..."
-                // Requirement 1: Fail-fast pattern enforced prior to compilation phase
                 sh 'npm run lint --if-present'
             }
         }
@@ -62,13 +60,11 @@ pipeline {
                 '''
                 
                 echo "Stashing assets for down-stream validation tracks..."
-                // Challenge B: Stash includes build directory AND manifest assets for context tracking
                 stash name: 'compiled-assets', includes: "${BUILD_DIR}/**,package.json,package-lock.json"
             }
         }
 
         stage('Verify') {
-            // Requirement 1: Parallel validation execution step matrix
             parallel {
                 stage('Test') {
                     steps {
@@ -83,7 +79,6 @@ pipeline {
                     }
                     post {
                         always {
-                            // Requirement 1: Publish JUnit metrics even if assertions fail
                             junit allowEmptyResults: true,
                                   testResults: 'test-results/*.xml'
                         }
@@ -101,7 +96,6 @@ pipeline {
         stage('Archive') {
             steps {
                 echo "Archiving compilation output artifacts with finger-printing..."
-                // Requirement 1: Secure compression archiving tracking rules
                 archiveArtifacts artifacts: "${BUILD_DIR}/**",
                                  fingerprint: true,
                                  onlyIfSuccessful: true
@@ -111,7 +105,6 @@ pipeline {
 
         stage('Publish') {
             steps {
-                // Requirement 1: Token injection with strictly bounded access lifetimes
                 withCredentials([usernamePassword(
                     credentialsId: 'nexus-credentials',
                     usernameVariable: 'NEXUS_USER',
@@ -147,7 +140,6 @@ pipeline {
         }
     }
 
-    // Requirement 1: Explicit pipeline outcome callbacks and reporting hooks
     post {
         success {
             echo "Pipeline succeeded! Release version ${env.ARTIFACT_VERSION} is safely hosted at: ${env.NEXUS_URL}"
